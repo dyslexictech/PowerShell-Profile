@@ -1,42 +1,43 @@
+Import-Module -Name posh-git
+Import-Module PSReadLine
 
-# Load posh-git example profile
-. $home + '\Documents\WindowsPowerShell\Modules\posh-git\profile.example.ps1'
-. (Resolve-Path "$env:LOCALAPPDATA\GitHub\shell.ps1")
+Set-Alias l Get-ChildItemColor -option AllScope -Force
+Set-Alias ls Get-ChildItemColor -option AllScope -Force
+Set-Alias dir Get-ChildItemColor -option AllScope -Force
 
-# quick ways to navigate around the system, e.g. cd $documents
-$tools = "c:\tools"
-$code = "c:\code"
-$winsitter = "c:\code\winsitter"
-$vstools = "C:\Program Files (x86)\Microsoft Visual Studio 11.0\Common7\Tools"
-$documents = $home + "\Documents"
-$desktop = $home + "\Desktop"
-$downloads = $home + "\Downloads"
-$modules = $home + "\Documents\WindowsPowerShell\Modules"
+Set-PSReadLineOption -HistoryNoDuplicates
+Set-PSReadLineOption -HistorySearchCursorMovesToEnd
+Set-PSReadLineOption -HistorySaveStyle SaveIncrementally
+Set-PSReadLineOption -MaximumHistoryCount 4000
 
-Set-Alias subl "C:\tools\sublime\sublime_text.exe"
-Set-Alias vim "c:\tools\vim73\vim.exe"
-Set-Alias vs "C:\Program Files (x86)\Microsoft Visual Studio 11.0\Common7\IDE\devenv.exe"
-# to add arguments to a command, you need to create a function and then alias that
-function vs2012admin {Start-Process "C:\Program Files (x86)\Microsoft Visual Studio 11.0\Common7\IDE\devenv.exe" -verb runAs}
-Set-Alias vsadmin vs2012admin
-Set-Alias conemu "C:\tools\ConEmu\ConEmu64.exe"
-Set-Alias console2 "c:\tools\console.exe"
+# history substring search
+Set-PSReadlineKeyHandler -Key UpArrow -Function HistorySearchBackward
+Set-PSReadlineKeyHandler -Key DownArrow -Function HistorySearchForward
 
-# no need to import modules in PowerShell 3.0, they get loaded as needed
-#Import-Module "PsGet"
-#Import-Module "PSUrl"
-#Import-Module "PoshCode"
-#Import-Module "WAPPSCmdlets"
-#Import-Module "Pscx"
+# Tab completion
+Set-PSReadlineKeyHandler -Chord 'Shift+Tab' -Function Complete
+Set-PSReadlineKeyHandler -Key Tab -Function MenuComplete
 
-# for using New-PSRemote command to connect to other "untrusted" boxes. You don't need this unless you know you do.
-$PSSessionOption = New-PSSessionOption -SkipRevocationCheck -SkipCACheck -SkipCNCheck
+function cddash {
+    if ($args[0] -eq '-') {
+        $pwd = $OLDPWD;
+    } else {
+        $pwd = $args[0];
+    }
+    $tmp = pwd;
 
-# for if you have PowerTab and are in PowerShell 2.0
-<############### Start of PowerTab Initialization Code ########################
-    Added to profile by PowerTab setup for loading of custom tab expansion.
-    Import other modules after this, they may contain PowerTab integration.
-#>
+    if ($pwd) {
+        Set-Location $pwd;
+    }
+    Set-Variable -Name OLDPWD -Value $tmp -Scope global;
+}
 
-#Import-Module "PowerTab" -ArgumentList "C:\Users\bret\Documents\WindowsPowerShell\PowerTabConfig.xml"
-################ End of PowerTab Initialization Code ##########################
+Set-Alias -Name cd -value cddash -Option AllScope
+
+$env:path = [Runtime.InteropServices.RuntimeEnvironment]::GetRuntimeDirectory()
+[AppDomain]::CurrentDomain.GetAssemblies() | % {
+  if (! $_.location) {continue}
+  $Name = Split-Path $_.location -leaf
+  Write-Host -ForegroundColor Yellow "NGENing : $Name"
+  ngen install $_.location | % {"`t$_"}
+}
